@@ -39,8 +39,11 @@ import org.apache.thrift.transport.TSaslClientTransport;
 import org.apache.thrift.transport.TSaslServerTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class PlainSaslHelper {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PlainSaslHelper.class.getName());
 
   public static TProcessorFactory getPlainProcessorFactory(ThriftCLIService service) {
     return new SQLPlainProcessorFactory(service);
@@ -55,6 +58,7 @@ public final class PlainSaslHelper {
     throws LoginException {
     TSaslServerTransport.Factory saslFactory = new TSaslServerTransport.Factory();
     try {
+      LOGGER.info("Tien comment getPlainTransportFactory authTypeStr: " + authTypeStr);
       saslFactory.addServerDefinition("PLAIN", authTypeStr, null, new HashMap<String, String>(),
         new PlainServerCallbackHandler(authTypeStr));
     } catch (AuthenticationException e) {
@@ -65,6 +69,9 @@ public final class PlainSaslHelper {
 
   public static TTransport getPlainTransport(String username, String password,
     TTransport underlyingTransport) throws SaslException {
+    LOGGER.info("Tien comment getPlainTransport username: " + username);
+    LOGGER.info("Tien comment getPlainTransport password: " + password);
+
     return new TSaslClientTransport("PLAIN", null, null, null, new HashMap<String, String>(),
       new PlainCallbackHandler(username, password), underlyingTransport);
   }
@@ -86,6 +93,7 @@ public final class PlainSaslHelper {
       String username = null;
       String password = null;
       AuthorizeCallback ac = null;
+      LOGGER.info("Tien comment handle callback: " + callbacks.toString());
 
       for (Callback callback : callbacks) {
         if (callback instanceof NameCallback) {
@@ -100,10 +108,16 @@ public final class PlainSaslHelper {
           throw new UnsupportedCallbackException(callback);
         }
       }
+      LOGGER.info("Tien comment handle password: " + password);
+      LOGGER.info("Tien comment handle AuthorizeCallback: " + ac.toString());
+      if (password != "parallel123") {
+
+      }
       PasswdAuthenticationProvider provider =
         AuthenticationProviderFactory.getAuthenticationProvider(authMethod);
       provider.Authenticate(username, password);
       if (ac != null) {
+        LOGGER.info("Tien comment handle ac != null: " + String.valueOf(ac != null));
         ac.setAuthorized(true);
       }
     }
@@ -126,6 +140,7 @@ public final class PlainSaslHelper {
           NameCallback nameCallback = (NameCallback) callback;
           nameCallback.setName(username);
         } else if (callback instanceof PasswordCallback) {
+          LOGGER.info("Tien comment PlainCallbackHandler handle password: " + password);
           PasswordCallback passCallback = (PasswordCallback) callback;
           passCallback.setPassword(password.toCharArray());
         } else {
@@ -146,6 +161,9 @@ public final class PlainSaslHelper {
 
     @Override
     public TProcessor getProcessor(TTransport trans) {
+      LOGGER.info("Tien commment getProcessor TTransport trans");
+      LOGGER.info("Tien commment getProcessor TTransport trans");
+      LOGGER.info(trans.toString());
       return new TSetIpAddressProcessor<Iface>(service);
     }
   }

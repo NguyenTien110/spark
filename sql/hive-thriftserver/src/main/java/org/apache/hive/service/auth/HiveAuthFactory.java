@@ -179,6 +179,8 @@ public class HiveAuthFactory {
 
   public TTransportFactory getAuthTransFactory() throws LoginException {
     TTransportFactory transportFactory;
+    LOG.info("Tien comment AuthTypes.getAuthName: " + authTypeStr.toString());
+
     if (authTypeStr.equalsIgnoreCase(AuthTypes.KERBEROS.getAuthName())) {
       try {
         transportFactory = saslServer.createTransportFactory(getSaslProperties());
@@ -187,6 +189,7 @@ public class HiveAuthFactory {
       }
     } else if (authTypeStr.equalsIgnoreCase(AuthTypes.NONE.getAuthName())) {
       transportFactory = PlainSaslHelper.getPlainTransportFactory(authTypeStr);
+      LOG.info("Tien comment AuthTypes.NONE.getAuthName: " + authTypeStr.toString());
     } else if (authTypeStr.equalsIgnoreCase(AuthTypes.LDAP.getAuthName())) {
       transportFactory = PlainSaslHelper.getPlainTransportFactory(authTypeStr);
     } else if (authTypeStr.equalsIgnoreCase(AuthTypes.PAM.getAuthName())) {

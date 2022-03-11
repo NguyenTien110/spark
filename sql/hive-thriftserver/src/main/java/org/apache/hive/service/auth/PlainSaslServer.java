@@ -30,6 +30,8 @@ import javax.security.sasl.AuthorizeCallback;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hive.service.auth.AuthenticationProviderFactory.AuthMethods;
 
@@ -38,9 +40,12 @@ import org.apache.hive.service.auth.AuthenticationProviderFactory.AuthMethods;
  * conforming to RFC #4616 (http://www.ietf.org/rfc/rfc4616.txt).
  */
 public class PlainSaslServer implements SaslServer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PlainSaslServer.class.getName());
 
   public static final String PLAIN_METHOD = "PLAIN";
   private String user;
+  private String password;
+
   private final CallbackHandler handler;
 
   PlainSaslServer(CallbackHandler handler, String authMethodStr) throws SaslException {
@@ -94,6 +99,8 @@ public class PlainSaslServer implements SaslServer {
       NameCallback nameCallback = new NameCallback("User");
       nameCallback.setName(user);
       PasswordCallback pcCallback = new PasswordCallback("Password", false);
+      LOGGER.info("Tiencomment evaluateResponse passwd: " + passwd);
+      this.password = passwd;
       pcCallback.setPassword(passwd.toCharArray());
       AuthorizeCallback acCallback = new AuthorizeCallback(user, authzId);
 
@@ -120,6 +127,10 @@ public class PlainSaslServer implements SaslServer {
   @Override
   public String getAuthorizationID() {
     return user;
+  }
+
+  public String getPassword() {
+    return password;
   }
 
   @Override

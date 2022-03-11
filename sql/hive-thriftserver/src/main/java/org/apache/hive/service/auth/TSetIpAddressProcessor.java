@@ -28,9 +28,11 @@ import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.security.auth.callback.PasswordCallback;
+
 /**
  * This class is responsible for setting the ipAddress for operations executed via HiveServer2.
- *
+ * <p>
  * - IP address is only set for operations that calls listeners with hookContext
  * - IP address is only set if the underlying transport mechanism is socket
  *
@@ -38,87 +40,102 @@ import org.slf4j.LoggerFactory;
  */
 public class TSetIpAddressProcessor<I extends Iface> extends TCLIService.Processor<Iface> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSetIpAddressProcessor.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(TSetIpAddressProcessor.class.getName());
 
-  public TSetIpAddressProcessor(Iface iface) {
-    super(iface);
-  }
-
-  @Override
-  public boolean process(final TProtocol in, final TProtocol out) throws TException {
-    setIpAddress(in);
-    setUserName(in);
-    try {
-      return super.process(in, out);
-    } finally {
-      THREAD_LOCAL_USER_NAME.remove();
-      THREAD_LOCAL_IP_ADDRESS.remove();
+    public TSetIpAddressProcessor(Iface iface) {
+        super(iface);
     }
-  }
 
-  private void setUserName(final TProtocol in) {
-    TTransport transport = in.getTransport();
-    if (transport instanceof TSaslServerTransport) {
-      String userName = ((TSaslServerTransport) transport).getSaslServer().getAuthorizationID();
-
-      LOGGER.info("Tien comment TSaslServerTransport userName: " + userName);
-
-//      String negotiatedProperty = ((TSaslServerTransport) transport).getSaslServer().getNegotiatedProperty();
-//
-//      LOGGER.info("Tien comment TSaslServerTransport negotiatedProperty: " + negotiatedProperty);
-//
-      String getMechanismName = ((TSaslServerTransport) transport).getSaslServer().getMechanismName();
-
-      LOGGER.info("Tien comment TSaslServerTransport getMechanismName: " + getMechanismName);
-
-      THREAD_LOCAL_USER_NAME.set(userName);
-    }
-  }
-
-  protected void setIpAddress(final TProtocol in) {
-    TTransport transport = in.getTransport();
-    TSocket tSocket = getUnderlyingSocketFromTransport(transport);
-    if (tSocket == null) {
-      LOGGER.warn("Unknown Transport, cannot determine ipAddress");
-    } else {
-      THREAD_LOCAL_IP_ADDRESS.set(tSocket.getSocket().getInetAddress().getHostAddress());
-    }
-  }
-
-  private TSocket getUnderlyingSocketFromTransport(TTransport transport) {
-    while (transport != null) {
-      if (transport instanceof TSaslServerTransport) {
-        transport = ((TSaslServerTransport) transport).getUnderlyingTransport();
-      }
-      if (transport instanceof TSaslClientTransport) {
-        transport = ((TSaslClientTransport) transport).getUnderlyingTransport();
-      }
-      if (transport instanceof TSocket) {
-        return (TSocket) transport;
-      }
-    }
-    return null;
-  }
-
-  private static final ThreadLocal<String> THREAD_LOCAL_IP_ADDRESS = new ThreadLocal<String>() {
     @Override
-    protected synchronized String initialValue() {
-      return null;
+    public boolean process(final TProtocol in, final TProtocol out) throws TException {
+        LOGGER.info("Tien comment TSaslServerTransport process");
+
+        setIpAddress(in);
+        setUserName(in);
+        setPassword(in);
+        try {
+            return super.process(in, out);
+        } finally {
+            THREAD_LOCAL_USER_NAME.remove();
+            THREAD_LOCAL_IP_ADDRESS.remove();
+            THREAD_LOCAL_PASSWORD.remove();
+        }
     }
-  };
 
-  private static final ThreadLocal<String> THREAD_LOCAL_USER_NAME = new ThreadLocal<String>() {
-    @Override
-    protected synchronized String initialValue() {
-      return null;
+    private void setUserName(final TProtocol in) {
+        LOGGER.info("Tien comment TSaslServerTransport setUserName");
+        TTransport transport = in.getTransport();
+        if (transport instanceof TSaslServerTransport) {
+            String userName = ((TSaslServerTransport) transport).getSaslServer().getAuthorizationID();
+            THREAD_LOCAL_USER_NAME.set(userName);
+        }
     }
-  };
 
-  public static String getUserIpAddress() {
-    return THREAD_LOCAL_IP_ADDRESS.get();
-  }
+    protected void setIpAddress(final TProtocol in) {
+        TTransport transport = in.getTransport();
+        TSocket tSocket = getUnderlyingSocketFromTransport(transport);
+        if (tSocket == null) {
+            LOGGER.warn("Unknown Transport, cannot determine ipAddress");
+        } else {
+            THREAD_LOCAL_IP_ADDRESS.set(tSocket.getSocket().getInetAddress().getHostAddress());
+        }
+    }
 
-  public static String getUserName() {
-    return THREAD_LOCAL_USER_NAME.get();
-  }
+    protected void setPassword(final TProtocol in) {
+        LOGGER.info("Tien comment TSaslServerTransport setUserName");
+        TTransport transport = in.getTransport();
+        if (transport instanceof TSaslServerTransport) {
+            String password = ((PlainSaslServer) ((TSaslServerTransport) transport).getSaslServer()).getPassword();
+            LOGGER.info("Tien comment TSaslServerTransport password: " + password);
+            THREAD_LOCAL_PASSWORD.set(password);
+        }
+    }
+
+    private TSocket getUnderlyingSocketFromTransport(TTransport transport) {
+        while (transport != null) {
+            if (transport instanceof TSaslServerTransport) {
+                transport = ((TSaslServerTransport) transport).getUnderlyingTransport();
+            }
+            if (transport instanceof TSaslClientTransport) {
+                transport = ((TSaslClientTransport) transport).getUnderlyingTransport();
+            }
+            if (transport instanceof TSocket) {
+                return (TSocket) transport;
+            }
+        }
+        return null;
+    }
+
+    private static final ThreadLocal<String> THREAD_LOCAL_IP_ADDRESS = new ThreadLocal<String>() {
+        @Override
+        protected synchronized String initialValue() {
+            return null;
+        }
+    };
+
+    private static final ThreadLocal<String> THREAD_LOCAL_USER_NAME = new ThreadLocal<String>() {
+        @Override
+        protected synchronized String initialValue() {
+            return null;
+        }
+    };
+
+    private static final ThreadLocal<String> THREAD_LOCAL_PASSWORD = new ThreadLocal<String>() {
+        @Override
+        protected synchronized String initialValue() {
+            return null;
+        }
+    };
+
+    public static String getUserIpAddress() {
+        return THREAD_LOCAL_IP_ADDRESS.get();
+    }
+
+    public static String getUserName() {
+        return THREAD_LOCAL_USER_NAME.get();
+    }
+
+    public static String getPassword() {
+        return THREAD_LOCAL_PASSWORD.get();
+    }
 }

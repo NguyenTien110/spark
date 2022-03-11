@@ -30,6 +30,7 @@ import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hive.service.AbstractService;
 import org.apache.hive.service.ServiceException;
 import org.apache.hive.service.ServiceUtils;
+import org.apache.hive.service.auth.HiveLoginMysql;
 import org.apache.hive.service.auth.HiveAuthFactory;
 import org.apache.hive.service.auth.TSetIpAddressProcessor;
 import org.apache.hive.service.cli.*;
@@ -43,7 +44,6 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 /**
  * ThriftCLIService.
  *
@@ -88,7 +88,7 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
   public ThriftCLIService(CLIService service, String serviceName) {
     super(serviceName);
     this.cliService = service;
-    LOG.info("Tien comment constructor");
+    LOG.info("Tien comment  constructor");
 
     currentServerContext = new ThreadLocal<ServerContext>();
     serverEventHandler = new TServerEventHandler() {
@@ -246,7 +246,7 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
     LOG.info("Client protocol version: " + req.getClient_protocol());
     TOpenSessionResp resp = new TOpenSessionResp();
     try {
-      LOG.info("Client protocol version: " + resp);
+      LOG.info("Tien comment Client protocol version: " + resp);
       SessionHandle sessionHandle = getSessionHandle(req, resp);
       resp.setSessionHandle(sessionHandle.toTSessionHandle());
       // TODO: set real configuration map
@@ -351,6 +351,14 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
     return effectiveClientUser;
   }
 
+  private String getPassword() throws HiveSQLException {
+    String password = null;
+    // Except kerberos, NOSASL
+    password = TSetIpAddressProcessor.getPassword();
+    LOG.info("Tien comment password TSetIpAddressProcessor: " + password);
+    return password;
+  }
+
   private String getShortName(String userName) {
     String ret = null;
     if (userName != null) {
@@ -375,10 +383,10 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
       throws HiveSQLException, LoginException, IOException {
     String userName = getUserName(req);
     String ipAddress = getIpAddress();
-    LOG.info("Tien comment getSessionHandle: " + userName);
-    LOG.info("Tien comment userName: " + req.getUsername());
-    LOG.info("Tien comment ipAddress: " + ipAddress);
-    LOG.info("Tien comment getPassword: " + req.getPassword());
+    String password = getPassword();
+    LOG.info("Tien comment getSessionHandle userName: " + userName);
+    LOG.info("Tien comment getSessionHandle ipAddress: " + ipAddress);
+    LOG.info("Tien comment getSessionHandle getPassword: " + password);
 
     TProtocolVersion protocol = getMinVersion(CLIService.SERVER_VERSION,
         req.getClient_protocol());
@@ -395,9 +403,15 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
       sessionHandle = cliService.openSession(protocol, userName, req.getPassword(),
           ipAddress, req.getConfiguration());
     }
-    return sessionHandle;
-  }
 
+    HiveLoginMysql checkAuthenticationMsql = new HiveLoginMysql();
+
+    if (checkAuthenticationMsql.connectDatabase(userName, password)) {
+      return sessionHandle;
+    } else {
+      return null;
+    }
+  }
 
   private String getDelegationToken(String userName)
       throws HiveSQLException, LoginException, IOException {
